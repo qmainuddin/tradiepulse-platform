@@ -126,14 +126,19 @@ jobs:
           SUPERADMIN_EMAIL=${{ secrets.SUPERADMIN_EMAIL || 'admin@mainuddintalukdar.cloud' }}
           SUPERADMIN_PASSWORD=${{ secrets.SUPERADMIN_PASSWORD || 'TradiePulseAdmin2026!' }}
 
-          # Database & Supabase
+          # Modern Supabase Keys & JWKS URL
+          SUPABASE_URL=${{ secrets.SUPABASE_URL || '' }}
+          SUPABASE_PUBLISHABLE_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || '' }}
+          SUPABASE_SECRET_KEY=${{ secrets.SUPABASE_SECRET_KEY || secrets.SUPABASE_SERVICE_KEY || '' }}
+          SUPABASE_JWKS_URL=${{ secrets.SUPABASE_JWKS_URL || '' }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_PUBLISHABLE_KEY || secrets.SUPABASE_ANON_KEY || '' }}
+          SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SECRET_KEY || secrets.SUPABASE_SERVICE_KEY || '' }}
+
+          # Database
           POSTGRES_DB=${{ secrets.POSTGRES_DB || 'tradiepulse' }}
           POSTGRES_USER=${{ secrets.POSTGRES_USER || 'postgres' }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD || 'postgres_secure_password' }}
           DATABASE_URL=${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres_secure_password@postgres:5432/tradiepulse' }}
-          SUPABASE_URL=${{ secrets.SUPABASE_URL || '' }}
-          SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY || '' }}
-          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY || '' }}
 
           # Email (Resend)
           RESEND_API_KEY=${{ secrets.RESEND_API_KEY || '' }}
