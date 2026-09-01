@@ -86,7 +86,7 @@ services:
       - tradiepulse-net
 
   config-service:
-    image: ghcr.io/${GHCR_OWNER:-mainuddin-talukdar}/tradiepulse-config:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-qmainuddin}/tradiepulse-config:${IMAGE_TAG:-latest}
     container_name: tradiepulse-config
     restart: unless-stopped
     environment:
@@ -103,7 +103,7 @@ services:
       - tradiepulse-net
 
   auth-service:
-    image: ghcr.io/${GHCR_OWNER:-mainuddin-talukdar}/tradiepulse-auth:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-qmainuddin}/tradiepulse-auth:${IMAGE_TAG:-latest}
     container_name: tradiepulse-auth
     restart: unless-stopped
     depends_on:
@@ -134,7 +134,7 @@ services:
       - tradiepulse-net
 
   api-gateway:
-    image: ghcr.io/${GHCR_OWNER:-mainuddin-talukdar}/tradiepulse-gateway:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-qmainuddin}/tradiepulse-gateway:${IMAGE_TAG:-latest}
     container_name: tradiepulse-gateway
     restart: unless-stopped
     depends_on:
@@ -162,7 +162,7 @@ services:
       - tradiepulse-net
 
   ai-agent:
-    image: ghcr.io/${GHCR_OWNER:-mainuddin-talukdar}/tradiepulse-ai-agent:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-qmainuddin}/tradiepulse-ai-agent:${IMAGE_TAG:-latest}
     container_name: tradiepulse-ai-agent
     restart: unless-stopped
     depends_on:
@@ -196,7 +196,7 @@ services:
       - tradiepulse-net
 
   frontend-shell:
-    image: ghcr.io/${GHCR_OWNER:-mainuddin-talukdar}/tradiepulse-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-qmainuddin}/tradiepulse-frontend:${IMAGE_TAG:-latest}
     container_name: tradiepulse-frontend
     restart: unless-stopped
     environment:
