@@ -1,0 +1,24 @@
+[submodule "services/frontend"]
+	path = services/frontend
+	url = https://github.com/mainuddin-talukdar/tradiepulse-frontend.git
+	branch = main
+
+[submodule "services/api-gateway"]
+	path = services/api-gateway
+	url = https://github.com/mainuddin-talukdar/tradiepulse-gateway.git
+	branch = main
+
+[submodule "services/auth-service"]
+	path = services/auth-service
+	url = https://github.com/mainuddin-talukdar/tradiepulse-auth.git
+	branch = main
+
+[submodule "services/config-service"]
+	path = services/config-service
+	url = https://github.com/mainuddin-talukdar/tradiepulse-config.git
+	branch = main
+
+[submodule "services/ai-agent"]
+	path = services/ai-agent
+	url = https://github.com/mainuddin-talukdar/tradiepulse-ai-agent.git
+	branch = main

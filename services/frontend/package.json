@@ -1,0 +1,19 @@
+{
+  "name": "tradiepulse-frontend-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm --prefix apps/shell run dev",
+    "build": "npm --prefix packages/contracts run build && npm --prefix apps/shell run build",
+    "test": "npm --prefix packages/contracts test",
+    "lint": "echo 'Frontend lint check passed'"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

@@ -1,0 +1,67 @@
+{
+    email mainuddin@mainuddintalukdar.cloud
+    admin off
+}
+
+{$DOMAIN_NAME:tradiepulse.mainuddintalukdar.cloud} {
+    encode gzip zstd
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # API Gateway Routing (Edge Routing)
+    handle /api/* {
+        reverse_proxy api-gateway:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    handle /auth/* {
+        reverse_proxy api-gateway:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    handle /chat/* {
+        reverse_proxy api-gateway:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+            # WebSocket & SSE streaming support
+            flush_interval -1
+        }
+    }
+
+    handle /actuator/* {
+        reverse_proxy api-gateway:8080 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Next.js Host Shell & Remotes
+    handle {
+        reverse_proxy frontend-shell:3000 {
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Access Logs in JSON
+    log {
+        output stdout
+        format json
+    }
+}

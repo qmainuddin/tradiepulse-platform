@@ -1,0 +1,31 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build outputs & caches
+node_modules/
+dist/
+build/
+target/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+coverage/
+*.log
+
+# Temp
+tmp/
+scratch/

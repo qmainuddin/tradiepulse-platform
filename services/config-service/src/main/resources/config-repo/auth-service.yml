@@ -1,0 +1,27 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://postgres:5432/tradiepulse}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres_secure_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: identity
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+security:
+  jwt:
+    secret-key: ${JWT_SIGNING_KEY:change-me-to-a-secure-256-bit-secret-key-at-least-32-chars-long}
+    access-token-expiration-minutes: 15
+    refresh-token-expiration-days: 7
+  rate-limit:
+    max-attempts: 5
+    lockout-duration-minutes: 15
+  activation:
+    expiry-hours: 48

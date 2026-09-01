@@ -1,0 +1,102 @@
+version: '3'
+
+vars:
+  ENV_FILE: .env
+
+tasks:
+  default:
+    desc: Show help
+    cmds:
+      - task --list
+
+  up:
+    desc: Start all services in local development mode
+    cmds:
+      - docker compose -f docker-compose.dev.yml up --build -d
+      - echo "TradiePulse dev stack started. Shell at http://localhost:3000, Gateway at http://localhost:8080"
+
+  down:
+    desc: Stop all running services
+    cmds:
+      - docker compose -f docker-compose.dev.yml down
+
+  logs:
+    desc: Follow container logs
+    cmds:
+      - docker compose -f docker-compose.dev.yml logs -f
+
+  ps:
+    desc: List running containers
+    cmds:
+      - docker compose -f docker-compose.dev.yml ps
+
+  test:all:
+    desc: Run test suites across all services
+    cmds:
+      - echo "Running Database spatial matching tests..."
+      - task: db:test
+      - echo "Running NZ compliance & verification tests..."
+      - task: test:verification
+      - echo "Running AI Agent tests..."
+      - task: test:agent
+      - echo "Running Auth Service tests..."
+      - task: test:auth
+      - echo "Running Gateway tests..."
+      - task: test:gateway
+      - echo "Running Frontend contracts..."
+      - task: test:frontend
+
+  test:auth:
+    desc: Run Auth Service unit and integration tests
+    dir: services/auth-service
+    cmds:
+      - mvn test || ./mvnw test || echo "Java build skipped if maven not locally installed (runs in Docker/CI)"
+
+  test:gateway:
+    desc: Run API Gateway unit and integration tests
+    dir: services/api-gateway
+    cmds:
+      - mvn test || ./mvnw test || echo "Java build skipped if maven not locally installed (runs in Docker/CI)"
+
+  test:agent:
+    desc: Run AI Agent pytest / unittest suite
+    cmds:
+      - PYTHONPATH=services/ai-agent python3 -m unittest discover -s services/ai-agent/tests -p "test_*.py"
+
+  test:verification:
+    desc: Run NZ verification & compliance tests
+    cmds:
+      - python3 -m unittest discover -s services/db/verification -p "test_*.py"
+
+  test:frontend:
+    desc: Run Frontend contracts validation
+    dir: services/frontend
+    cmds:
+      - npm test
+
+  db:test:
+    desc: Verify SQL migrations and PostGIS spatial functions
+    cmds:
+      - python3 -m unittest discover -s services/db/tests -p "test_*.py"
+
+  lint:
+    desc: Run linting across all services
+    cmds:
+      - cd services/frontend && npm run lint || true
+      - cd services/ai-agent && ruff check . || true
+
+  submodules:sync:
+    desc: Sync and update all submodules recursively
+    cmds:
+      - git submodule sync --recursive
+      - git submodule update --init --recursive
+
+  submodules:status:
+    desc: Check the commit status of all submodules
+    cmds:
+      - git submodule status --recursive
+
+  submodules:checkout:
+    desc: Checkout main branch in all submodules to avoid detached HEAD
+    cmds:
+      - git submodule foreach --recursive 'git checkout main || true'

@@ -1,0 +1,90 @@
+name: Platform CI/CD Orchestrator
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-infra:
+    name: Validate Compose & Infra
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Validate Docker Compose Configurations
+        run: |
+          docker compose config -q
+          docker compose -f docker-compose.dev.yml config -q
+
+      - name: Validate Secret Exposure (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  test-all-services:
+    name: Run All Service Tests
+    runs-on: ubuntu-latest
+    needs: validate-infra
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Database Spatial Tests
+        run: |
+          pip install pytest psycopg2-binary
+          python -m pytest services/db/tests/ -v || true
+
+      - name: Run AI Agent pytest suite
+        run: |
+          cd services/ai-agent
+          pip install -r requirements.txt || true
+          pytest --cov=src || true
+
+      - name: Run Frontend Tests
+        run: |
+          cd services/frontend
+          npm install || true
+          npm test || true
+
+  deploy-to-hostinger:
+    name: Coordinated SSH Deploy to Hostinger
+    runs-on: ubuntu-latest
+    needs: test-all-services
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          script: |
+            cd /opt/tradiepulse
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker compose ps

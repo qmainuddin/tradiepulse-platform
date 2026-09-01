@@ -1,0 +1,46 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://postgres:5432/tradiepulse}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres_secure_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_schema: identity
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+security:
+  jwt:
+    secret-key: ${JWT_SIGNING_KEY:change-me-to-a-secure-256-bit-secret-key-at-least-32-chars-long}
+    access-token-expiration-minutes: 15
+    refresh-token-expiration-days: 7
+  rate-limit:
+    max-attempts: 5
+    lockout-duration-minutes: 15
+  activation:
+    expiry-hours: 48
+
+superadmin:
+  email: ${SUPERADMIN_EMAIL:admin@mainuddintalukdar.cloud}
+  password: ${SUPERADMIN_PASSWORD:change-me-superadmin-secure-pwd-123!}
+
+resend:
+  api-key: ${RESEND_API_KEY:re_mock_api_key}
+  from-email: ${EMAIL_FROM_ADDRESS:noreply@mainuddintalukdar.cloud}
+
+app:
+  domain: ${DOMAIN_NAME:tradiepulse.mainuddintalukdar.cloud}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

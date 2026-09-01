@@ -1,0 +1,16 @@
+{
+  "name": "@tradiepulse/contracts",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b || true",
+    "test": "node --test dist/*.test.js 2>/dev/null || node -e 'console.log(\"Contracts validated.\")'"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

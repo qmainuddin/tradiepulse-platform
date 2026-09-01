@@ -1,0 +1,15 @@
+# build & deps
+node_modules/
+dist/
+.next/
+out/
+
+# secrets & env
+.env
+.env.*
+*.pem
+*.key
+
+# coverage & logs
+coverage/
+*.log

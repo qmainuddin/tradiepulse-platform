@@ -1,0 +1,26 @@
+# build & deps
+node_modules/
+target/
+dist/
+build/
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# secrets & env
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# large / generated
+*.lock
+coverage/
+*.log
+
+# vendored submodules (agent works one repo at a time)
+services/*/

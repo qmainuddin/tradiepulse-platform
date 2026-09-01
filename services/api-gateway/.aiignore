@@ -1,0 +1,13 @@
+# build & deps
+target/
+.mvn/
+*.class
+
+# secrets & env
+.env
+.env.*
+*.pem
+*.key
+
+# logs & coverage
+*.log
