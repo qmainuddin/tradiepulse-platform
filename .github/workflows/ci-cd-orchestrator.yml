@@ -156,73 +156,60 @@ jobs:
           EOF
           fi
 
-      - name: Prepare Remote VPS Directories
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USER || 'root' }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT || 22 }}
-          script: |
-            mkdir -p /opt/tradiepulse/infra/caddy
-            mkdir -p /opt/tradiepulse/services/db/migrations
-            docker network create stack 2>/dev/null || true
+      - name: Deploy to Hostinger VPS via Native OpenSSH
+        env:
+          SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          SSH_USER: ${{ secrets.HOSTINGER_SSH_USER || 'root' }}
+          SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          SSH_PASS: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          
+          # Setup SSH Authentication
+          if [ -n "$SSH_KEY" ]; then
+            echo "Using SSH Private Key authentication..."
+            printf "%s\n" "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+            chmod 600 ~/.ssh/deploy_key
+            SSH_PREFIX="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST"
+            SCP_PREFIX="scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/deploy_key"
+          elif [ -n "$SSH_PASS" ]; then
+            echo "Using SSH Password authentication via sshpass..."
+            sudo apt-get update -y && sudo apt-get install -y sshpass
+            SSH_PREFIX="sshpass -p '$SSH_PASS' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST"
+            SCP_PREFIX="sshpass -p '$SSH_PASS' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          else
+            echo "::error::Neither HOSTINGER_SSH_KEY nor HOSTINGER_SSH_PASSWORD secret is set in repository settings!"
+            exit 1
+          fi
 
-      - name: Copy Stack Configuration to Hostinger VPS (SCP)
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USER || 'root' }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT || 22 }}
-          target: /opt/tradiepulse
-          source: "docker-compose.yml,infra/caddy/Caddyfile,services/db/migrations/*"
+          echo "==> Creating /opt/tradiepulse directory on VPS..."
+          $SSH_PREFIX "mkdir -p /opt/tradiepulse/infra/caddy /opt/tradiepulse/services/db/migrations"
 
-      - name: Copy Generated .env to Hostinger VPS (SCP)
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USER || 'root' }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT || 22 }}
-          target: /opt/tradiepulse/.env
-          source: prod.env
-          strip_components: 1
+          echo "==> Transferring docker-compose, caddyfile, migrations, and .env to VPS..."
+          $SCP_PREFIX docker-compose.yml "$SSH_USER@$SSH_HOST:/opt/tradiepulse/docker-compose.yml"
+          $SCP_PREFIX infra/caddy/Caddyfile "$SSH_USER@$SSH_HOST:/opt/tradiepulse/infra/caddy/Caddyfile"
+          $SCP_PREFIX -r services/db/migrations/* "$SSH_USER@$SSH_HOST:/opt/tradiepulse/services/db/migrations/"
+          $SCP_PREFIX prod.env "$SSH_USER@$SSH_HOST:/opt/tradiepulse/.env"
 
-      - name: Deploy & Launch Containers on Hostinger VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.HOSTINGER_SSH_HOST }}
-          username: ${{ secrets.HOSTINGER_SSH_USER || 'root' }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
-          port: ${{ secrets.HOSTINGER_SSH_PORT || 22 }}
-          script: |
+          echo "==> Deploying and launching Docker containers on Hostinger VPS..."
+          $SSH_PREFIX bash -c "'
             cd /opt/tradiepulse
             chmod 600 .env
 
-            # Ensure Docker is installed & running
             if ! command -v docker &> /dev/null; then
-              echo "Installing Docker Engine & Docker Compose plugin on VPS..."
+              echo \"Installing Docker Engine...\"
               curl -fsSL https://get.docker.com | sh
             fi
 
-            # Ensure external stack network exists
             docker network create stack 2>/dev/null || true
 
-            # Login to GitHub Container Registry
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # Pull fresh production images from GHCR
+            echo \"$GH_TOKEN\" | docker login ghcr.io -u \"$GH_ACTOR\" --password-stdin
             docker compose pull
-
-            # Start/Update full container stack
             docker compose up -d --remove-orphans
-
-            # Healthcheck check
-            echo "Waiting for services to become healthy..."
-            sleep 10
+            
+            echo \"=== TradiePulse Containers Status ===\"
             docker compose ps
+          '"
