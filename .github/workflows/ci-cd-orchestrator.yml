@@ -23,6 +23,7 @@ jobs:
 
       - name: Validate Compose Configurations
         run: |
+          docker network create stack 2>/dev/null || true
           docker compose config -q
           docker compose -f docker-compose.dev.yml config -q
 
@@ -160,6 +161,7 @@ jobs:
           script: |
             mkdir -p /opt/tradiepulse/infra/caddy
             mkdir -p /opt/tradiepulse/services/db/migrations
+            docker network create stack 2>/dev/null || true
 
       - name: Copy Stack Configuration to Hostinger VPS (SCP)
         uses: appleboy/scp-action@v0.1.7
@@ -198,6 +200,9 @@ jobs:
               echo "Installing Docker Engine & Docker Compose plugin on VPS..."
               curl -fsSL https://get.docker.com | sh
             fi
+
+            # Ensure external stack network exists
+            docker network create stack 2>/dev/null || true
 
             # Login to GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin

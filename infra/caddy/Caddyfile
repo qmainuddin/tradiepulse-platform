@@ -1,9 +1,4 @@
-{
-    email mainuddin@mainuddintalukdar.cloud
-    admin off
-}
-
-{$DOMAIN_NAME:tradiepulse.mainuddintalukdar.cloud} {
+tradiepulse.mainuddintalukdar.cloud {
     encode gzip zstd
 
     # Security Headers
@@ -15,9 +10,9 @@
         Referrer-Policy "strict-origin-when-cross-origin"
     }
 
-    # API Gateway Routing (Edge Routing)
+    # API Gateway Routing
     handle /api/* {
-        reverse_proxy api-gateway:8080 {
+        reverse_proxy tradiepulse-gateway:8080 {
             header_up X-Forwarded-Host {host}
             header_up X-Forwarded-Proto {scheme}
             header_up X-Real-IP {remote_host}
@@ -25,7 +20,7 @@
     }
 
     handle /auth/* {
-        reverse_proxy api-gateway:8080 {
+        reverse_proxy tradiepulse-gateway:8080 {
             header_up X-Forwarded-Host {host}
             header_up X-Forwarded-Proto {scheme}
             header_up X-Real-IP {remote_host}
@@ -33,17 +28,16 @@
     }
 
     handle /chat/* {
-        reverse_proxy api-gateway:8080 {
+        reverse_proxy tradiepulse-gateway:8080 {
             header_up X-Forwarded-Host {host}
             header_up X-Forwarded-Proto {scheme}
             header_up X-Real-IP {remote_host}
-            # WebSocket & SSE streaming support
             flush_interval -1
         }
     }
 
     handle /actuator/* {
-        reverse_proxy api-gateway:8080 {
+        reverse_proxy tradiepulse-gateway:8080 {
             header_up X-Forwarded-Host {host}
             header_up X-Forwarded-Proto {scheme}
             header_up X-Real-IP {remote_host}
@@ -52,14 +46,14 @@
 
     # Next.js Host Shell & Remotes
     handle {
-        reverse_proxy frontend-shell:3000 {
+        reverse_proxy tradiepulse-frontend:3000 {
             header_up X-Forwarded-Host {host}
             header_up X-Forwarded-Proto {scheme}
             header_up X-Real-IP {remote_host}
         }
     }
 
-    # Access Logs in JSON
+    # Structured JSON Logs
     log {
         output stdout
         format json

@@ -3,13 +3,13 @@ name: tradiepulse
 networks:
   tradiepulse-net:
     driver: bridge
+  stack:
+    external: true
 
 volumes:
   pgdata:
   redisdata:
   qdrantdata:
-  caddy_data:
-  caddy_config:
 
 services:
   postgres:
@@ -132,6 +132,7 @@ services:
       retries: 10
     networks:
       - tradiepulse-net
+      - stack
 
   api-gateway:
     image: ghcr.io/${GHCR_OWNER:-qmainuddin}/tradiepulse-gateway:${IMAGE_TAG:-latest}
@@ -160,6 +161,7 @@ services:
       retries: 10
     networks:
       - tradiepulse-net
+      - stack
 
   ai-agent:
     image: ghcr.io/${GHCR_OWNER:-qmainuddin}/tradiepulse-ai-agent:${IMAGE_TAG:-latest}
@@ -194,6 +196,7 @@ services:
       retries: 10
     networks:
       - tradiepulse-net
+      - stack
 
   frontend-shell:
     image: ghcr.io/${GHCR_OWNER:-qmainuddin}/tradiepulse-frontend:${IMAGE_TAG:-latest}
@@ -213,20 +216,4 @@ services:
       retries: 10
     networks:
       - tradiepulse-net
-
-  caddy:
-    image: caddy:2.8-alpine
-    container_name: tradiepulse-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend-shell
-      - api-gateway
-    networks:
-      - tradiepulse-net
+      - stack
