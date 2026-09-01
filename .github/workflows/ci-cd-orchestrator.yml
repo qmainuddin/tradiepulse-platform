@@ -160,6 +160,7 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
           SSH_USER: ${{ secrets.HOSTINGER_SSH_USER || 'root' }}
+          SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT || '22' }}
           SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
           SSH_PASS: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
           GH_ACTOR: ${{ github.actor }}
@@ -168,18 +169,25 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           
+          # Clean and trim input values
+          SSH_HOST=$(echo "${SSH_HOST:-72.62.70.145}" | xargs)
+          SSH_USER=$(echo "${SSH_USER:-root}" | xargs)
+          SSH_PORT=$(echo "${SSH_PORT:-22}" | xargs)
+
+          echo "Target Host: $SSH_USER@$SSH_HOST:$SSH_PORT"
+
           # Setup SSH Authentication
           if [ -n "$SSH_KEY" ]; then
             echo "Using SSH Private Key authentication..."
             printf "%s\n" "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
             chmod 600 ~/.ssh/deploy_key
-            SSH_PREFIX="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST"
-            SCP_PREFIX="scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/deploy_key"
+            SSH_PREFIX="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 -p $SSH_PORT -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST"
+            SCP_PREFIX="scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 -P $SSH_PORT -i ~/.ssh/deploy_key"
           elif [ -n "$SSH_PASS" ]; then
             echo "Using SSH Password authentication via sshpass..."
             sudo apt-get update -y && sudo apt-get install -y sshpass
-            SSH_PREFIX="sshpass -p '$SSH_PASS' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST"
-            SCP_PREFIX="sshpass -p '$SSH_PASS' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+            SSH_PREFIX="sshpass -p '$SSH_PASS' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 -p $SSH_PORT $SSH_USER@$SSH_HOST"
+            SCP_PREFIX="sshpass -p '$SSH_PASS' scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 -P $SSH_PORT"
           else
             echo "::error::Neither HOSTINGER_SSH_KEY nor HOSTINGER_SSH_PASSWORD secret is set in repository settings!"
             exit 1
