@@ -73,6 +73,36 @@ class TestTradiePulseWorkflow(unittest.TestCase):
 
         asyncio.run(run_test())
 
+    def test_electrician_matching_flow(self):
+        async def run_test():
+            state = AgentState(
+                session_id="session-test-elec",
+                customer_id="cust-elec-1",
+                current_user_input="Need an electrician, power tripping in switchboard in Papanui."
+            )
+            response = await self.workflow.execute_turn(state)
+            self.assertEqual(response.stage, "propose_match")
+            self.assertEqual(response.trade, TradeType.ELECTRICIAN)
+            self.assertEqual(response.location, "Christchurch")
+            self.assertGreaterEqual(len(response.matched_tradies), 1)
+
+        asyncio.run(run_test())
+
+    def test_mechanic_matching_flow(self):
+        async def run_test():
+            state = AgentState(
+                session_id="session-test-mech",
+                customer_id="cust-mech-1",
+                current_user_input="Car won't start, need a mechanic in Hornby, Christchurch."
+            )
+            response = await self.workflow.execute_turn(state)
+            self.assertEqual(response.stage, "propose_match")
+            self.assertEqual(response.trade, TradeType.MECHANIC)
+            self.assertEqual(response.location, "Christchurch")
+            self.assertGreaterEqual(len(response.matched_tradies), 1)
+
+        asyncio.run(run_test())
+
     def test_ambiguous_request_triggers_clarification(self):
         async def run_test():
             state = AgentState(
@@ -85,6 +115,19 @@ class TestTradiePulseWorkflow(unittest.TestCase):
             self.assertEqual(response.stage, "clarify")
             self.assertIsNone(response.trade)
             self.assertTrue("clarify" in response.message.lower() or "tell" in response.message.lower())
+
+        asyncio.run(run_test())
+
+    def test_workflow_budget_tracking_and_metrics(self):
+        async def run_test():
+            state = AgentState(
+                session_id="session-metrics-01",
+                customer_id="cust-metrics",
+                current_user_input="Hot water cylinder leak in St Albans."
+            )
+            await self.workflow.execute_turn(state)
+            metrics = self.budget_governor.get_metrics()
+            self.assertGreater(metrics["total_tokens"], 0)
 
         asyncio.run(run_test())
 

@@ -1,6 +1,6 @@
 """
 Tests for PostGIS Spatial Matching Engine (V8__spatial_matching_function.sql)
-Validates distance calculations, radius filters, status filters, and availability.
+Validates distance calculations, radius filters, status filters, availability, and rating tie-breakers.
 Supports both unittest and pytest.
 """
 import math
@@ -76,6 +76,37 @@ class TestSpatialMatching(unittest.TestCase):
         self.assertEqual(results[0]["name"], "Dave Riccarton Plumbing")
         self.assertLess(results[0]["distance_meters"], results[1]["distance_meters"])
 
+    def test_rating_tie_breaker_for_equal_distance(self):
+        """Verify that when distance is equal, higher rated tradie ranks higher."""
+        tradie_high_rating = MockTradieProfile("t1", "Top Rated Plumber", "plumber", RICCARTON_CHRISTCHURCH[0], RICCARTON_CHRISTCHURCH[1], 20, rating=4.95)
+        tradie_lower_rating = MockTradieProfile("t2", "Good Plumber", "plumber", RICCARTON_CHRISTCHURCH[0], RICCARTON_CHRISTCHURCH[1], 20, rating=4.50)
+
+        results = simulate_nearest_available_qualified(
+            [tradie_lower_rating, tradie_high_rating],
+            trade="plumber",
+            customer_lat=CHRISTCHURCH_CATHEDRAL_SQUARE[0],
+            customer_lon=CHRISTCHURCH_CATHEDRAL_SQUARE[1],
+            radius_meters=15000
+        )
+        self.assertEqual(len(results), 2)
+        self.assertEqual(results[0]["name"], "Top Rated Plumber")
+        self.assertEqual(results[1]["name"], "Good Plumber")
+
+    def test_limit_truncation(self):
+        """Verify that the limit parameter strictly limits the number of returned results."""
+        candidates = [
+            MockTradieProfile(f"t{i}", f"Tradie {i}", "electrician", RICCARTON_CHRISTCHURCH[0], RICCARTON_CHRISTCHURCH[1], 25, rating=4.0 + (i * 0.1))
+            for i in range(10)
+        ]
+        results = simulate_nearest_available_qualified(
+            candidates,
+            trade="electrician",
+            customer_lat=CHRISTCHURCH_CATHEDRAL_SQUARE[0],
+            customer_lon=CHRISTCHURCH_CATHEDRAL_SQUARE[1],
+            limit=3
+        )
+        self.assertEqual(len(results), 3)
+
     def test_radius_cutoff(self):
         """Verify that tradies outside the search radius or outside their own service radius are excluded."""
         local_plumber = MockTradieProfile("t1", "Central Plumber", "plumber", RICCARTON_CHRISTCHURCH[0], RICCARTON_CHRISTCHURCH[1], 15)
@@ -122,6 +153,16 @@ class TestSpatialMatching(unittest.TestCase):
         )
         self.assertEqual(len(results_monday), 1)
         self.assertEqual(results_monday[0]["name"], "Monday Spark")
+
+    def test_empty_candidates_returns_empty(self):
+        """Verify that an empty pool returns an empty list without error."""
+        results = simulate_nearest_available_qualified(
+            [],
+            trade="mechanic",
+            customer_lat=CHRISTCHURCH_CATHEDRAL_SQUARE[0],
+            customer_lon=CHRISTCHURCH_CATHEDRAL_SQUARE[1]
+        )
+        self.assertEqual(results, [])
 
 
 if __name__ == "__main__":
