@@ -102,6 +102,76 @@ All versioned migrations live in [`services/db/migrations/V1__init_schemas.sql` 
 
 ---
 
+## 🧪 Comprehensive Automated Test Suites & Added Test Cases
+
+TradiePulse adheres strictly to the **TDD Law** (RED $\to$ GREEN $\to$ REFACTOR) with 41+ automated tests across all operational tiers:
+
+```
+Test Suites Inventory:
+├── services/db/tests/test_spatial_matching.py         (7 tests, 100% Green)
+├── services/db/verification/test_verification.py       (6 tests, 100% Green)
+├── services/ai-agent/tests/test_bounded_history.py     (2 tests, 100% Green)
+├── services/ai-agent/tests/test_budget_governor.py     (3 tests, 100% Green)
+├── services/ai-agent/tests/test_schema_gates.py        (6 tests, 100% Green)
+├── services/ai-agent/tests/test_pii_redactor.py        (7 tests, 100% Green)
+├── services/ai-agent/tests/test_semantic_cache.py      (4 tests, 100% Green)
+├── services/ai-agent/tests/test_workflow.py            (5 tests, 100% Green)
+└── services/frontend/packages/contracts/               (Contracts Validated)
+```
+
+### Detailed Breakdown of Added Test Cases
+
+#### 1. AI Agent Guardrails & Token Discipline (`services/ai-agent/tests/`)
+- **Bounded History Management (`test_bounded_history.py`)**:
+  - `test_history_under_ceiling_remains_uncompressed`: Verifies conversation history below the limit ($N \le 4$) is kept verbatim without distortion.
+  - `test_history_exceeding_ceiling_compresses_older_turns`: Verifies that conversations $> 4$ turns retain the last 4 turns verbatim and compress earlier turns into structured rolling summaries to prevent unbounded context burn.
+- **Token Budget Governor (`test_budget_governor.py`)**:
+  - `test_within_budget_passes`: Verifies prompts within the 4096 request token ceiling pass validation.
+  - `test_exceeding_budget_rejected`: Enforces ceiling violation rejection on prompts $> 4096$ tokens.
+  - `test_record_usage_and_metrics`: Verifies multi-turn cumulative token tracking (tokens in, tokens out, total USD cost).
+- **Typed Schema Gates & Self-Healing (`test_schema_gates.py`)**:
+  - `test_direct_valid_json_parsing`: Direct validation of `IntakeClassification` Pydantic models.
+  - `test_markdown_fence_cleaning`: Verifies automatic extraction and sanitization of JSON enclosed in ` ```json ... ``` ` fences.
+  - `test_bounded_repair_success`: Simulates corrupted/hallucinated LLM output and verifies 1-step schema-anchored repair recovery.
+  - `test_location_extraction_schema_validation`: Validates Canterbury spatial extraction schemas.
+  - `test_match_confirmation_schema_validation`: Validates structured booking confirmation models.
+- **NZ PII Redaction (`test_pii_redactor.py`)**:
+  - `test_redact_nz_phone_numbers`: Redacts local NZ mobiles (`021`, `022`, `027`) and landlines (`03`, `04`, `09`).
+  - `test_redact_nz_international_phone`: Redacts E.164 and international format NZ numbers (`+64 21...`, `+64-3-...`).
+  - `test_redact_nz_ird_numbers`: Redacts 8-digit and 9-digit IRD numbers (`123-456-789`, `49-091-850`).
+  - `test_redact_credit_cards`: Redacts Visa/Mastercard credit card sequences.
+  - `test_redact_multiple_pii_in_single_message`: Verifies simultaneous multi-PII sanitization in a single complex input turn.
+  - `test_no_pii_passthrough`: Ensures no false positives or text degradation on normal trades problem descriptions.
+- **Semantic Response Cache (`test_semantic_cache.py`)**:
+  - `test_cache_miss_then_hit_with_normalized_query`: Verifies semantic key hashing and 0-token hit retrieval.
+  - `test_distinct_queries_do_not_collide`: Ensures distinct trade requests (plumber vs. electrician) do not produce false positive collisions.
+  - `test_get_metrics_reporting`: Verifies accurate hit-rate percentage calculation and telemetry.
+  - `test_whitespace_and_punctuation_normalization`: Handles chaotic punctuation and irregular spacing.
+- **Multi-Trade Workflow Orchestration (`test_workflow.py`)**:
+  - `test_full_plumber_matching_conversation`: Complete multi-turn plumber booking and event publishing flow.
+  - `test_electrician_matching_flow`: End-to-end electrical problem intake in Papanui.
+  - `test_mechanic_matching_flow`: End-to-end automotive breakdown problem intake in Hornby.
+  - `test_ambiguous_request_triggers_clarification`: Deterministic clarification branching when request spans multiple trades.
+  - `test_workflow_budget_tracking_and_metrics`: Validates token usage metrics logging across workflow steps.
+
+#### 2. PostGIS Spatial Matching & NZ Compliance (`services/db/`)
+- **Spatial Matching Engine (`test_spatial_matching.py`)**:
+  - `test_nearest_tradie_ordering`: Proves that distance sorting ranks closer tradies first (Riccarton $\approx 3.2\text{km}$ over Papanui $\approx 4.4\text{km}$).
+  - `test_rating_tie_breaker_for_equal_distance`: Verifies that if two tradies are at the same distance, the higher-rated tradie ranks first.
+  - `test_radius_cutoff`: Verifies strict exclusion of tradies outside customer radius (excluding Rangiora $\approx 25\text{km}$ and Dunedin $\approx 360\text{km}$).
+  - `test_unverified_tradies_excluded`: Guarantees unverified and inactive tradies never appear in match results.
+  - `test_availability_filter`: Enforces day-of-week calendar availability filtering.
+  - `test_limit_truncation`: Validates returned result truncation against request limits.
+  - `test_empty_candidates_returns_empty`: Safe handling of zero-candidate spatial queries.
+- **NZ Licensing & Regulatory Compliance (`test_verification.py`)**:
+  - `test_ird_modulus11_checksum`: Validates official NZ Inland Revenue Modulus-11 checksums for both 8-digit and 9-digit formats (`49-091-850`, `49-098-847`, `105-001-541`).
+  - `test_ewrb_license_verification`: Validates Electrical Workers Registration Board licence format and inspector status.
+  - `test_pgdb_license_verification`: Validates Plumbers, Gasfitters and Drainlayers Board registration.
+  - `test_christchurch_regional_compliance`: Enforces mandatory NZ \$2M Public Liability Insurance and Canterbury building code standards.
+  - `test_full_tradie_onboarding_verification_pipeline`: Full orchestration pipeline verifying tax, licence, and regional insurance sequentially.
+
+---
+
 ## 🚀 Getting Started (Local Development)
 
 ### Prerequisites
@@ -199,6 +269,66 @@ tradiepulse.mainuddintalukdar.cloud {
     }
 }
 ```
+
+---
+
+## 🔮 Phase 2 Extension & Future Roadmap
+
+The Phase 2 expansion focuses on transitioning TradiePulse from an intelligent matchmaking portal into a full-lifecycle, automated operational backbone for New Zealand trades businesses:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               TRADIEPULSE PHASE 2 ROADMAP                              │
+├──────────────────────────────┬─────────────────────────────┬───────────────────────────┤
+│ 1. Instant Mobile Dispatch   │ 2. Live GPS & ETA Tracking  │ 3. Milestone Escrow & GST │
+│    • 2-way Twilio SMS Bridge │    • WebSocket Live Stream  │    • Stripe NZ Integration│
+│    • WhatsApp Notifications  │    • PostGIS Arrival Fences │    • Automatic 15% GST    │
+├──────────────────────────────┼─────────────────────────────┼───────────────────────────┤
+│ 4. Real-time MBIE Live Sync  │ 5. Nationwide Expansion     │ 6. Multimodal Voice AI    │
+│    • EWRB/PGDB API Webhooks  │    • Auckland, Wellington   │    • Gemini Live Phone Bot│
+│    • Auto-Revocation on Expiry│   • Localized Council Codes│    • Site Photo Damage RAG│
+└──────────────────────────────┴─────────────────────────────┴───────────────────────────┘
+```
+
+### 1. Instant Mobile Dispatch & SMS/WhatsApp Bridge (Twilio / Resend)
+- **Problem**: Busy tradies are on job sites or driving and cannot continuously monitor a web dashboard.
+- **Phase 2 Solution**:
+  - Immediate two-way SMS & WhatsApp dispatch when a customer problem is classified.
+  - Tradies can accept or decline jobs by simply replying `"1"` (Accept) or `"2"` (Decline) to an automated SMS.
+  - Virtual masked phone numbers protect both customer and tradie privacy under NZ Privacy Act 2020.
+
+### 2. Live GPS Tracking & Geofenced Arrival Notifications
+- **Problem**: Homeowners experience friction not knowing exact tradie arrival times within broad 4-hour booking windows.
+- **Phase 2 Solution**:
+  - Tradie mobile companion PWA streams GPS coordinates via WebSockets when en-route.
+  - PostGIS `ST_DWithin` spatial trigger automatically sends customer notifications: *"Dave is 5 minutes away (approx 2.1km)"*.
+  - Real-time live interactive map in the Customer Portal showing tradie transit progress.
+
+### 3. Stripe NZ & Milestone-Based Escrow Payments
+- **Problem**: Tradies struggle with late invoice payments, while customers fear paying upfront before inspection.
+- **Phase 2 Solution**:
+  - Integration with **Stripe Connect NZ** for automated pre-authorized milestone escrow.
+  - Customer funds are held safely upon booking confirmation and released upon customer digital sign-off.
+  - Automatic generation of New Zealand GST-compliant (15%) tax invoices with IRD numbers formatted for Xero and MYOB.
+
+### 4. Real-Time MBIE Regulatory Sync (EWRB & PGDB Webhooks)
+- **Problem**: Manual license uploads can expire or be suspended without the platform knowing.
+- **Phase 2 Solution**:
+  - Direct integration with the **Ministry of Business, Innovation and Employment (MBIE)** public API register.
+  - Nightly automated cron synchronization to verify practicing license status.
+  - Instant automated suspension of tradie profile from search catalog if their practicing license expires or is revoked.
+
+### 5. Nationwide Multi-City Spatial Expansion
+- **Problem**: Current PostGIS index and regional rules are focused primarily on Greater Christchurch & Canterbury.
+- **Phase 2 Solution**:
+  - Expand spatial partitions to **Auckland, Wellington, Hamilton, Tauranga, and Queenstown**.
+  - Local council building consent rules and geographic terrain routing (e.g. alpine and ferry transport considerations).
+
+### 6. Voice AI Dispatcher & Multimodal Site Assessment (Gemini Live API)
+- **Problem**: Elderly homeowners and tradies in transit prefer speaking over typing.
+- **Phase 2 Solution**:
+  - Integration of **Gemini Live API** bidirectional low-latency audio for phone-in bookings.
+  - **Multimodal Site Photo Analysis**: Homeowners upload photos of damaged pipes or electrical boards; computer vision estimates required replacement parts and flags safety hazards prior to tradie arrival.
 
 ---
 
