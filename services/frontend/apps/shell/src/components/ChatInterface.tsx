@@ -15,6 +15,7 @@ interface Message {
 }
 
 export const ChatInterface: React.FC = () => {
+  const [sessionId] = useState<string>(() => `session-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init-1",
@@ -65,23 +66,46 @@ export const ChatInterface: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Id": "demo-customer-uuid",
-        },
-        body: JSON.stringify({
-          message: userText,
-          media_urls: currentMedia,
-        }),
-      });
+      const gatewayUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:8080";
+      
+      let res: Response | null = null;
+      try {
+        res = await fetch(`${gatewayUrl}/api/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": "demo-customer-uuid",
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            message: userText,
+            media_urls: currentMedia,
+          }),
+        });
+      } catch {
+        res = null;
+      }
 
-      if (!response.ok) {
+      if (!res || !res.ok) {
+        res = await fetch("http://localhost:8000/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": "demo-customer-uuid",
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            message: userText,
+            media_urls: currentMedia,
+          }),
+        });
+      }
+
+      if (!res.ok) {
         throw new Error("Failed to communicate with AI Agent Service");
       }
 
-      const data = await response.json();
+      const data = await res.json();
 
       const agentMessage: Message = {
         id: `agent-${Date.now()}`,

@@ -52,7 +52,7 @@ class TestTradiePulseWorkflow(unittest.TestCase):
             # Assertions
             self.assertEqual(response.stage, "propose_match")
             self.assertEqual(response.trade, TradeType.PLUMBER)
-            self.assertEqual(response.location, "Christchurch")
+            self.assertIn("Christchurch", response.location)
             self.assertGreaterEqual(len(response.matched_tradies), 1)
             self.assertIn("Dave Riccarton Plumbing", response.message)
             self.assertFalse(response.cache_hit)
@@ -83,7 +83,7 @@ class TestTradiePulseWorkflow(unittest.TestCase):
             response = await self.workflow.execute_turn(state)
             self.assertEqual(response.stage, "propose_match")
             self.assertEqual(response.trade, TradeType.ELECTRICIAN)
-            self.assertEqual(response.location, "Christchurch")
+            self.assertIn("Christchurch", response.location)
             self.assertGreaterEqual(len(response.matched_tradies), 1)
 
         asyncio.run(run_test())
@@ -98,7 +98,7 @@ class TestTradiePulseWorkflow(unittest.TestCase):
             response = await self.workflow.execute_turn(state)
             self.assertEqual(response.stage, "propose_match")
             self.assertEqual(response.trade, TradeType.MECHANIC)
-            self.assertEqual(response.location, "Christchurch")
+            self.assertIn("Christchurch", response.location)
             self.assertGreaterEqual(len(response.matched_tradies), 1)
 
         asyncio.run(run_test())

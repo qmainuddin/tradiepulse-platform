@@ -11,7 +11,7 @@ class OpenRouterProvider(LLMProvider):
     """OpenRouter Multi-Model Router Provider with aggressive prompt caching."""
 
     def __init__(self, api_key: str, default_model: str = "meta-llama/llama-3.3-70b-instruct:free", timeout: float = 30.0):
-        self.api_key = api_key
+        self.api_key = api_key or ""
         self.default_model = default_model
         self.timeout = timeout
         self.base_url = "https://openrouter.ai/api/v1"
@@ -37,7 +37,6 @@ class OpenRouterProvider(LLMProvider):
         payload_messages.extend(messages)
 
         if response_model is not None:
-            # Instruct model for structured JSON schema matching response_model
             schema_json = json.dumps(response_model.model_json_schema())
             system_instruction = f"\nYou MUST respond strictly in valid JSON conforming to this JSON Schema:\n{schema_json}\nReturn ONLY the JSON object, with no markdown code blocks or commentary."
             if payload_messages and payload_messages[0]["role"] == "system":
@@ -51,8 +50,8 @@ class OpenRouterProvider(LLMProvider):
             "temperature": temperature
         }
 
-        # If using mock key in unit test environment, return deterministic mock
-        if not self.api_key or self.api_key.startswith("sk-or-mock") or self.api_key == "":
+        # If using mock key or local development without live paid key, return deterministic mock
+        if not self.api_key or "mock" in self.api_key.lower() or self.api_key.startswith("sk-or-mock") or self.api_key == "":
             return self._mock_completion(messages, response_model)
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -85,7 +84,7 @@ class OpenRouterProvider(LLMProvider):
         system_prefix: str = "",
         temperature: float = 0.1
     ) -> AsyncGenerator[str, None]:
-        if not self.api_key or self.api_key.startswith("sk-or-mock"):
+        if not self.api_key or "mock" in self.api_key.lower() or self.api_key.startswith("sk-or-mock"):
             for word in ["Kia ", "ora! ", "I'm ", "connecting ", "you ", "with ", "a ", "local ", "tradie."]:
                 yield word
             return
@@ -140,7 +139,6 @@ class OpenRouterProvider(LLMProvider):
 
     def _mock_completion(self, messages: List[Dict[str, str]], response_model: Optional[Type[BaseModel]]) -> LLMResponse:
         raw_msg = " ".join([m.get("content", "") for m in messages])
-        # Extract direct customer input line
         user_line = raw_msg
         for line in raw_msg.split("\n"):
             if line.startswith("Customer Input:"):
@@ -150,13 +148,21 @@ class OpenRouterProvider(LLMProvider):
         user_text = user_line.lower()
         
         if response_model is not None and response_model.__name__ == "IntakeClassification":
-            trade = "plumber" if ("tap" in user_text or "leak" in user_text or "pipe" in user_text or "drain" in user_text) \
-                else "electrician" if ("wire" in user_text or "spark" in user_text or "power" in user_text or "switch" in user_text) \
-                else "mechanic" if ("car" in user_text or "engine" in user_text or "brake" in user_text or "wof" in user_text) \
-                else None
+            is_plumber = any(w in user_text for w in ["plumb", "tap", "leak", "pipe", "drain", "toilet", "water", "sink", "cylinder", "dripping", "blocked", "hot water", "basin"])
+            is_electrician = any(w in user_text for w in ["electr", "spark", "wire", "power", "switch", "light", "fuse", "socket", "tripping", "board", "solar", "circuit", "ev charger"])
+            is_mechanic = any(w in user_text for w in ["mechan", "car", "engine", "brake", "wof", "auto", "vehicle", "clutch", "tyre", "tire", "battery", "oil", "transmission", "suspension"])
+
+            if is_plumber:
+                trade = "plumber"
+            elif is_electrician:
+                trade = "electrician"
+            elif is_mechanic:
+                trade = "mechanic"
+            else:
+                trade = None
             
             is_ambiguous = trade is None
-            clarification = "Could you please clarify what needs fixing? (e.g. plumbing, electrical, or mechanic work)" if is_ambiguous else None
+            clarification = "Could you please clarify what needs fixing? (For example: leaking tap, faulty power point, or car engine issue)" if is_ambiguous else None
             
             mock_data = {
                 "trade": trade,
@@ -174,10 +180,32 @@ class OpenRouterProvider(LLMProvider):
             )
         
         if response_model is not None and response_model.__name__ == "LocationExtraction":
+            suburbs = {
+                "riccarton": (-43.5310, 172.5970, "Riccarton, Christchurch"),
+                "papanui": (-43.4980, 172.6050, "Papanui, Christchurch"),
+                "hornby": (-43.5410, 172.5270, "Hornby, Christchurch"),
+                "st albans": (-43.5120, 172.6350, "St Albans, Christchurch"),
+                "fendalton": (-43.5150, 172.6020, "Fendalton, Christchurch"),
+                "merivale": (-43.5140, 172.6240, "Merivale, Christchurch"),
+                "linwood": (-43.5350, 172.6680, "Linwood, Christchurch"),
+                "rangiora": (-43.3031, 172.5954, "Rangiora, Canterbury"),
+                "rolleston": (-43.5930, 172.3800, "Rolleston, Canterbury"),
+            }
+            matched_loc = "Christchurch"
+            matched_lat = -43.5321
+            matched_lon = 172.6362
+
+            for sub, (lat, lon, name) in suburbs.items():
+                if sub in user_text:
+                    matched_loc = name
+                    matched_lat = lat
+                    matched_lon = lon
+                    break
+
             mock_data = {
-                "location_name": "Christchurch",
-                "latitude": -43.5321,
-                "longitude": 172.6362,
+                "location_name": matched_loc,
+                "latitude": matched_lat,
+                "longitude": matched_lon,
                 "is_canterbury_region": True
             }
             return LLMResponse(
